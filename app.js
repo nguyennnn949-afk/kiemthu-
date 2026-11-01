@@ -6,6 +6,31 @@
 // ─── AUTH ────────────────────────────────────────────────────
 const AUTH_KEY = 'quanlyhocsinh_accounts';
 const SESSION_KEY = 'quanlyhocsinh_session';
+const STATE_STORAGE_KEY = 'quanlyhocsinh_app_state';
+
+function saveState() {
+  try {
+    localStorage.setItem(STATE_STORAGE_KEY, JSON.stringify(state));
+  } catch (e) {
+    console.error('Không thể lưu state vào localStorage:', e);
+  }
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STATE_STORAGE_KEY);
+    if (raw) {
+      const saved = JSON.parse(raw);
+      if (saved && saved.students && saved.students.length > 0) {
+        state = saved;
+        return true;
+      }
+    }
+  } catch (e) {
+    console.error('Lỗi khi tải state từ localStorage:', e);
+  }
+  return false;
+}
 
 // Default admin account
 const DEFAULT_ACCOUNTS = [
@@ -542,6 +567,7 @@ function addStudent() {
   const id = Date.now();
   state.students.push({ id, no, name, gender, scores: {} });
   state.homeworks.forEach(hw => hw.progress[id] = false);
+  saveState();
   closeModal();
   renderStudents();
   showToast(`Đã thêm học sinh ${name}`, 'success');
@@ -635,19 +661,51 @@ function openStudentDetail(id) {
       `;
     })()}
 
-    <div style="margin-top:16px;display:flex;justify-content:flex-end;gap:10px;">
+    <div style="margin-top:16px;display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;">
       <button class="btn btn-danger" onclick="deleteStudent(${id})">🗑 Xoá học sinh</button>
+      <button class="btn btn-secondary" onclick="openEditStudent(${id})">✏️ Sửa thông tin</button>
       <button class="btn btn-secondary" onclick="closeModal();navigate('conduct');setTimeout(()=>openConductEdit(${id},${new Date().getMonth()+1}),100)">🌟 Đánh giá HK</button>
-      <button class="btn btn-primary" onclick="openEditScores(${id})">✏️ Cập nhật điểm</button>
+      <button class="btn btn-primary" onclick="openEditScores(${id})">📊 Cập nhật điểm</button>
     </div>
   `;
 
   openModal('modalStudentDetail');
 }
 
+function openEditStudent(id) {
+  closeModal();
+  const s = state.students.find(x => x.id === id);
+  if (!s) return;
+  document.getElementById('editStudentId').value = s.id;
+  document.getElementById('editStudentName').value = s.name;
+  document.getElementById('editStudentGender').value = s.gender;
+  document.getElementById('editStudentNo').value = s.no || '';
+  openModal('modalEditStudent');
+}
+
+function saveEditStudent() {
+  const id = parseInt(document.getElementById('editStudentId').value);
+  const name = document.getElementById('editStudentName').value.trim();
+  const gender = document.getElementById('editStudentGender').value;
+  const no = parseInt(document.getElementById('editStudentNo').value) || 1;
+  if (!name) { showToast('Vui lòng nhập họ tên!', 'error'); return; }
+  const s = state.students.find(x => x.id === id);
+  if (!s) return;
+  s.name = name;
+  s.gender = gender;
+  s.no = no;
+  saveState();
+  closeModal();
+  renderStudents();
+  renderScoresTable();
+  renderDashboardIfActive();
+  showToast(`✅ Đã lưu học sinh: ${name}`, 'success');
+}
+
 function deleteStudent(id) {
   if (!confirm('Bạn có chắc muốn xoá học sinh này?')) return;
   state.students = state.students.filter(s => s.id !== id);
+  saveState();
   closeModal();
   renderStudents();
   showToast('Đã xoá học sinh', 'info');
@@ -710,6 +768,7 @@ function addScore() {
   const s = state.students.find(x => x.id === studentId);
   if (!s) return;
   s.scores[subject] = value;
+  saveState();
   closeModal();
   renderScoresTable();
   renderDashboardIfActive();
@@ -783,6 +842,7 @@ function toggleProgress(hwId, studentId, el) {
   const hw = state.homeworks.find(h => h.id === hwId);
   if (!hw) return;
   hw.progress[studentId] = !hw.progress[studentId];
+  saveState();
   el.classList.toggle('done');
   el.textContent = hw.progress[studentId] ? '✓' : '';
   renderDashboardIfActive();
@@ -792,6 +852,7 @@ function toggleHwStatus(hwId) {
   const hw = state.homeworks.find(h => h.id === hwId);
   if (!hw) return;
   hw.open = !hw.open;
+  saveState();
   renderHomework();
   showToast(`Bài tập đã ${hw.open ? 'mở' : 'đóng'}`, 'info');
 }
@@ -799,6 +860,7 @@ function toggleHwStatus(hwId) {
 function deleteHomework(hwId) {
   if (!confirm('Xoá bài tập này?')) return;
   state.homeworks = state.homeworks.filter(h => h.id !== hwId);
+  saveState();
   renderHomework();
   showToast('Đã xoá bài tập', 'info');
 }
@@ -820,6 +882,7 @@ function addHomework() {
   const hw = { id: Date.now(), name, subject, deadline, desc, open: true, progress: {} };
   state.students.forEach(s => hw.progress[s.id] = false);
   state.homeworks.push(hw);
+  saveState();
   closeModal();
   renderHomework();
   showToast(`Đã thêm bài tập: ${name}`, 'success');
@@ -914,6 +977,7 @@ function submitHomework() {
   // Mark homework as done for student
   const hw = state.homeworks.find(h => h.id === hwId);
   if (hw) hw.progress[studentId] = true;
+  saveState();
 
   // Reset
   pendingFiles = [];
@@ -1084,6 +1148,7 @@ function saveGrade(subId) {
   if (isNaN(score) || score < 0 || score > 10) { showToast('Điểm phải từ 0 đến 10!', 'error'); return; }
   sub.score = score;
   sub.feedback = feedbackVal;
+  saveState();
   renderSubmissions();
   viewSubmission(subId);
   showToast('✅ Đã lưu điểm & nhận xét!', 'success');
@@ -1105,6 +1170,7 @@ function submitQuestion(subId) {
     reply: '',
     replyTime: '',
   });
+  saveState();
   viewSubmission(subId);
   renderSubmissions();
   showToast('🙋 Đã gửi câu hỏi!', 'success');
@@ -1120,6 +1186,7 @@ function saveReply(subId, qId) {
   if (!text) { showToast('Vui lòng nhập câu trả lời!', 'error'); return; }
   q.reply = text;
   q.replyTime = new Date().toLocaleString('vi-VN');
+  saveState();
   viewSubmission(subId);
   renderSubmissions();
   showToast('↩️ Đã trả lời!', 'success');
@@ -1128,6 +1195,7 @@ function saveReply(subId, qId) {
 function deleteSubmission(subId) {
   if (!confirm('Xoá bài nộp này?')) return;
   state.submissions = state.submissions.filter(s => s.id !== subId);
+  saveState();
   closeModal();
   renderSubmissions();
   renderDashboardIfActive();
@@ -1288,6 +1356,7 @@ function saveConductEdit() {
     absent,
     note,
   };
+  saveState();
   closeModal();
   renderConduct();
   renderDashboardIfActive();
@@ -1334,7 +1403,10 @@ function updateStats() {
 
 // ─── INIT ─────────────────────────────────────────────────────
 function init() {
-  initSampleData();
+  if (!loadState()) {
+    initSampleData();
+    saveState();
+  }
   initDate();
   // Set conduct month dropdown to current month
   const monthSel = document.getElementById('conductMonth');
@@ -1501,6 +1573,7 @@ function saveTimetable() {
     morning:   readSection('ttm', PERIODS_MORNING),
     afternoon: readSection('tta', PERIODS_AFTERNOON),
   };
+  saveState();
   closeModal();
   renderTimetable();
   showToast('✅ Đã lưu thời khóa biểu!', 'success');

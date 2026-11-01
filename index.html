@@ -46,9 +46,6 @@
       </div>
       <div class="auth-error" id="loginError"></div>
       <button class="auth-btn" id="loginBtn" onclick="handleLogin()">🚀 Đăng Nhập</button>
-      <div class="auth-admin-hint">
-        <span>🔑 Admin:</span> <code>admin</code> / <code>admin123</code>
-      </div>
     </div>
 
     <!-- REGISTER FORM -->
@@ -439,6 +436,36 @@
     <div class="form-row">
       <button class="btn btn-secondary" onclick="closeModal()">Huỷ</button>
       <button class="btn btn-primary" onclick="addStudent()">Thêm</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Student Modal -->
+<div class="modal" id="modalEditStudent">
+  <div class="modal-header">
+    <h3>✏️ Sửa Thông Tin Học Sinh</h3>
+    <button class="modal-close" onclick="closeModal()">✕</button>
+  </div>
+  <div class="modal-body">
+    <input type="hidden" id="editStudentId" />
+    <div class="form-group">
+      <label>Họ và tên *</label>
+      <input type="text" class="input-field" id="editStudentName" placeholder="Nguyễn Văn An" />
+    </div>
+    <div class="form-group">
+      <label>Giới tính</label>
+      <select class="select-input" id="editStudentGender">
+        <option value="Nam">Nam</option>
+        <option value="Nữ">Nữ</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Số thứ tự</label>
+      <input type="number" class="input-field" id="editStudentNo" placeholder="1" min="1" />
+    </div>
+    <div class="form-row">
+      <button class="btn btn-secondary" onclick="closeModal()">Huỷ</button>
+      <button class="btn btn-primary" onclick="saveEditStudent()">💾 Lưu thay đổi</button>
     </div>
   </div>
 </div>
